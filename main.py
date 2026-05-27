@@ -5,7 +5,7 @@ from PIL import Image, ImageOps
 import time
 
 # --- IMPORT DATA DARI FILE TERPISAH ---
-from data import CLASS_NAMES, JAJANAN_DB
+from jajanan_data import CLASS_NAMES, JAJANAN_DB
 
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -55,8 +55,6 @@ def predict_image(img, model_tf):
 # --- LOGIKA NAVIGASI (SESSION STATE) ---
 if 'app_stage' not in st.session_state:
     st.session_state['app_stage'] = 'landing'
-if 'input_method' not in st.session_state:
-    st.session_state['input_method'] = None
 
 def change_stage(stage_name):
     st.session_state['app_stage'] = stage_name
@@ -98,69 +96,61 @@ if st.session_state['app_stage'] == 'landing':
 # ==========================================
 elif st.session_state['app_stage'] == 'detection':
     if st.button("⬅️ Kembali ke Home"):
-        st.session_state['input_method'] = None
         change_stage('landing')
         
     st.write("---")
     st.title("Pindai Jajanan Tradisional 📸")
-    st.write("Pilih salah satu metode di bawah ini untuk mengambil gambar:")
-
-    # Tombol Pilihan Metode Input
-    col_upload, col_cam = st.columns(2)
-    with col_upload:
-        if st.button("📁 Upload Gambar File", use_container_width=True):
-            st.session_state['input_method'] = 'file'
-    with col_cam:
-        if st.button("📷 Pindai dari Kamera", use_container_width=True):
-            st.session_state['input_method'] = 'camera'
-
+    st.write("Silakan ambil foto langsung atau upload file dari galeri.")
     st.write("##")
-    
-    image_data = None
-    
-    if st.session_state['input_method'] == 'file':
-        uploaded_file = st.file_uploader("Pilih file gambar dari galeri...", type=["jpg", "jpeg", "png"])
-        if uploaded_file is not None:
-            image_data = Image.open(uploaded_file)
-            
-    elif st.session_state['input_method'] == 'camera':
-        camera_file = st.camera_input("Arahkan jajanan ke kamera laptop/HP")
-        if camera_file is not None:
-            image_data = Image.open(camera_file)
 
-    # Proses Eksekusi jika Gambar Sudah Masuk
+    # 1. INPUT KAMERA LANGSUNG (Otomatis trigger prompt allow/deny di browser)
+    camera_file = st.camera_input("Arahkan jajanan ke kamera")
+    
+    # Pembatas visual biar rapi
+    st.markdown("<h4 style='text-align: center; color: #aaa; margin: 25px 0;'>— ATAU —</h4>", unsafe_allow_html=True)
+    
+    # 2. INPUT FILE UPLOADER (Langsung stand-by buka file manager saat diklik)
+    uploaded_file = st.file_uploader("📁 Upload gambar dari file manager / galeri...", type=["jpg", "jpeg", "png"])
+
+    # Menentukan sumber gambar yang aktif (Kamera diprioritaskan jika keduanya terisi)
+    image_data = None
+    if camera_file is not None:
+        image_data = Image.open(camera_file)
+    elif uploaded_file is not None:
+        image_data = Image.open(uploaded_file)
+
+    # Jika salah satu input dapet gambar, tombol analisis bakal muncul
     if image_data is not None:
         st.write("---")
-        st.image(image_data, caption='Gambar yang akan dianalisis', use_container_width=True)
-        st.write("##")
+        # Jika input dari file uploader, kita tampilin preview gambarnya di bawah
+        if uploaded_file is not None and camera_file is None:
+            st.image(image_data, caption='Gambar ter-upload', use_container_width=True)
         
+        st.write("##")
         if st.button("🔥 Analisis Gambar", use_container_width=True, type="primary"):
             if loaded_model is not None:
                 hasil, persen = predict_image(image_data, loaded_model)
 
-                # Cek jika indeks keluaran model ngaco / out of bounds
                 if "Unknown_Index_" in hasil:
                     st.error(f"⚠️ **Error Kecocokan Model!** Model memprediksi indeks kelas **{hasil.split('_')[-1]}**, tetapi daftar CLASS_NAMES di file 'jajanan_data.py' cuma punya {len(CLASS_NAMES)} pilihan. Silakan periksa kembali urutan folder dataset di Colab lu.")
                 else:
                     st.write("##")
                     st.subheader("🎉 Hasil Klasifikasi")
                     
-                    # Logika Penarikan Data dari Database Berdasarkan Key Huruf Kecil
                     if hasil in JAJANAN_DB:
                         info = JAJANAN_DB[hasil]
                         
-                        # Menampilkan Nama Display yang Rapi (Huruf Kapital)
+                        # Menampilkan Output Informasi Sesuai Request Lu
                         st.metric(label="Nama Jajanan Tradisional", value=info['nama_display'])
                         st.metric(label="Tingkat Keyakinan (Confidence Score)", value=f"{persen:.2f}%")
                         
-                        st.info(f"📍 **Asal Daerah:** {info['asal']}")
+                        st.info(f"📍 **Kota Asal (Khas Jatim):** {info['asal']}")
                         st.markdown(f"""
                         **📄 Deskripsi:** {info['deskripsi']}
                         
                         **🌾 Bahan-Bahan Utama:** {info['bahan']}
                         """)
                     else:
-                        # Fallback aman jika kelas terdaftar di list tapi lupa ditulis di dictionary DB
                         st.metric(label="Nama Jajanan Tradisional", value=hasil.title())
                         st.metric(label="Tingkat Keyakinan (Confidence Score)", value=f"{persen:.2f}%")
                         st.warning("Informasi tambahan untuk jajanan ini belum dimasukkan ke database sistem.")
