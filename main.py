@@ -8,39 +8,42 @@ import os
 # --- IMPORT DATABASE ---
 from jajanan_data import CLASS_NAMES, JAJANAN_DB
 
-# --- KONFIGURASI ---
+# --- KONFIGURASI Halaman ---
 st.set_page_config(page_title="Pendeteksi Jajanan Jatim", page_icon="🍰", layout="centered")
 
-# --- KUSTOMISASI UI (CSS HACK) ---
+# --- KUSTOMISASI UI (CSS HACK UNTUK STREAMLIT 1.57) ---
 st.markdown("""
     <style>
-        /* Target langsung ke class dropzone utama */
-        .stFileUploader div[data-testid="stFileUploaderDropzone"] {
+        /* 1. Mengubah kotak dropzone utama (Streamlit baru menggunakan tag section) */
+        .stFileUploader section {
             border: 2px dashed #ff823a !important;
             border-radius: 12px !important;
             background-color: #fffaf7 !important;
-            padding: 20px !important;
+            padding: 25px !important;
+            text-align: center !important;
         }
         
-        /* Ubah warna teks instruksi */
-        .stFileUploader div[data-testid="stFileUploaderDropzone"] h4 {
+        /* 2. Mengubah teks instruksi di dalam kotak */
+        .stFileUploader section div {
             color: #222222 !important;
-            font-weight: bold !important;
         }
         
-        /* Styling tombol internal Browse Files */
-        .stFileUploader div[data-testid="stFileUploaderDropzone"] button {
+        /* 3. Menyulap tombol 'Browse files' internal agar berwarna Oranye Estetik */
+        .stFileUploader section button {
             background-color: #ff823a !important;
             color: white !important;
             border: none !important;
             border-radius: 8px !important;
-            padding: 8px 20px !important;
+            padding: 10px 24px !important;
             font-weight: bold !important;
+            box-shadow: 0 4px 6px rgba(255, 130, 58, 0.2) !important;
+            margin-top: 10px !important;
         }
         
-        /* Sembunyikan teks panduan kecil bawaan */
-        .stFileUploader div[data-testid="stFileUploaderDropzoneInstructions"] {
-            display: none !important;
+        /* Efek hover saat tombol disentuh mouse */
+        .stFileUploader section button:hover {
+            background-color: #e06f2e !important;
+            color: white !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -72,6 +75,19 @@ def run_prediction(img, model_tf):
         return f"Unknown_{idx}", conf
     return CLASS_NAMES[idx], conf
 
+# --- LOGIKA DIAGNOSTIK DI SIDEBAR (Biar Halaman Utama Bersih) ---
+with st.sidebar:
+    st.header("🔍 Status Server AI")
+    if os.path.exists(MODEL_PATH):
+        file_size_kb = os.path.getsize(MODEL_PATH) / 1024
+        st.success(f"Model File: **Aman ({file_size_kb:.1f} KB)**")
+        if loaded_model is not None:
+            st.success("Status Model: **Siap Digunakan ✅**")
+        else:
+            st.error("Status Model: **Gagal Load ❌**")
+    else:
+        st.error("Model File: **Tidak Ditemukan ❌**")
+
 # --- NAVIGASI ---
 if 'stage' not in st.session_state:
     st.session_state['stage'] = 'landing'
@@ -88,28 +104,7 @@ def go_to(stage_name):
 # --- STAGE 1: LANDING PAGE ---
 # ==========================================
 if st.session_state['stage'] == 'landing':
-    
-    # ====== KOTAK DETEKTIF / DIAGNOSTIK FILE (Bisa Dihapus Kalau Sudah Normal) ======
-    st.warning("🔍 **INFO DIAGNOSTIK SISTEM (Cek Server):**")
-    if os.path.exists(MODEL_PATH):
-        file_size_bytes = os.path.getsize(MODEL_PATH)
-        file_size_kb = file_size_bytes / 1024
-        st.write(f"• Ukuran file model di server Streamlit: **{file_size_kb:.2f} KB**")
-        
-        # Baca 20 karakter pertama buat ngecek isi filenya teks (Git LFS) atau biner (.h5)
-        with open(MODEL_PATH, 'rb') as f:
-            file_header = f.read(20)
-        st.write(f"• Karakter biner file: `{file_header}`")
-        
-        if file_size_kb < 100:
-            st.error("🚨 **Analisis:** File model lu fix KORUP/CUMA POINTER (di bawah 100 KB). Pantas TensorFlow nolak membaca signature-nya!")
-        else:
-            st.success("✅ **Analisis:** File model aman ter-upload penuh (di atas 10 MB).")
-    else:
-        st.error(f"🚨 **Analisis:** File '{MODEL_PATH}' bener-bener kagak nemu di repository GitHub lu!")
-    st.write("---")
-    # ================================================================================
-
+    st.write("##")
     st.write("##")
     st.markdown("<h1 style='text-align: center;'>🍰<br>Sistem Deteksi Jajanan</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666;'>Kenali kekayaan kuliner Jawa Timur dengan teknologi AI.</p>", unsafe_allow_html=True)
@@ -125,14 +120,16 @@ elif st.session_state['stage'] == 'detection':
     st.write("Silakan izinkan kamera atau gunakan galeri di bawah jika kamera bermasalah.")
     st.write("##")
     
+    # 1. Kamera Otomatis
     cam_file = st.camera_input("Ambil foto jajanan langsung")
     
     if not cam_file:
-        st.info("💡 **Kamera tidak aktif?** Jika akses kamera ditolak atau tidak tersedia, tenang brok! Kamu bisa langsung pakai tombol **Upload dari Galeri** di bawah ini 👇")
+        st.info("💡 **Kamera tidak aktif?** Jika akses kamera ditolak atau tidak tersedia, kamu bisa langsung pakai tombol **Upload dari Galeri** di bawah ini 👇")
 
     st.markdown("<h5 style='text-align: center; color: #888; margin: 25px 0;'>— ATAU PILIH FILE —</h5>", unsafe_allow_html=True)
     
-    gal_file = st.file_uploader("📁 Klik di sini untuk membuka File Manager / Galeri", type=["jpg", "png", "jpeg"])
+    # 2. Galeri Otomatis (Sudah dipaksa berubah bentuk lewat CSS Baru)
+    gal_file = st.file_uploader("Klik tombol di bawah untuk membuka Galeri / File Manager", type=["jpg", "png", "jpeg"])
 
     final_img = None
     if cam_file: final_img = Image.open(cam_file)
@@ -147,7 +144,7 @@ elif st.session_state['stage'] == 'detection':
                 st.session_state['result_data'] = {'name': res, 'conf': cf}
                 go_to('results')
             else:
-                st.error("❌ Tombol dikunci karena model .h5 lu masih dideteksi rusak/kosong oleh server. Selesaikan pesan error merah di halaman depan terlebih dahulu.")
+                st.error("❌ Model gagal dimuat sempurna. Periksa status di sidebar.")
             
     if st.button("Kembali ke Home", use_container_width=True):
         go_to('landing')
@@ -160,6 +157,8 @@ elif st.session_state['stage'] == 'results':
     img = st.session_state['active_img']
     
     st.title("Hasil Pemindaian ✨")
+    
+    # Tampilan Gambar Gede Menghabiskan Layar HP
     st.image(img, use_container_width=True)
     
     if data:
@@ -173,7 +172,7 @@ elif st.session_state['stage'] == 'results':
             col2.metric("Kota Asal", info['asal'])
             
             with st.expander("Informasi Lengkap", expanded=True):
-                st.write(f"**Deskripsi:** {info['deskripsi']}")
+                st.write(f"**Deskripsi:** {info['sub_deskripsi'] if 'sub_deskripsi' in info else info['deskripsi']}")
                 st.write(f"**Bahan Utama:** {info['bahan']}")
         else:
             st.warning(f"Terdeteksi sebagai: {key.title()}")
