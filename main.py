@@ -11,39 +11,52 @@ from jajanan_data import CLASS_NAMES, JAJANAN_DB
 # --- KONFIGURASI Halaman ---
 st.set_page_config(page_title="Pendeteksi Jajanan Jatim", page_icon="🍰", layout="centered")
 
-# --- KUSTOMISASI UI (CSS HACK UNTUK STREAMLIT 1.57) ---
+# --- KUSTOMISASI UI (SULAP JADI TOMBOL SOLID LURUS) ---
 st.markdown("""
     <style>
-        /* 1. Mengubah kotak dropzone utama (Streamlit baru menggunakan tag section) */
+        /* 1. Hapus total border kotak hantu dan background pink bawaan */
         .stFileUploader section {
-            border: 2px dashed #ff823a !important;
-            border-radius: 12px !important;
-            background-color: #fffaf7 !important;
-            padding: 25px !important;
-            text-align: center !important;
+            border: none !important;
+            background-color: transparent !important;
+            padding: 0px !important;
+            margin: 0px !important;
         }
         
-        /* 2. Mengubah teks instruksi di dalam kotak */
+        /* 2. Hilangkan semua teks instruksi dan icon bawaan yang bikin berantakan */
         .stFileUploader section div {
-            color: #222222 !important;
+            font-size: 0px !important;
+            color: transparent !important;
+            padding: 0px !important;
+            margin: 0px !important;
+        }
+        .stFileUploader section svg {
+            display: none !important;
         }
         
-        /* 3. Menyulap tombol 'Browse files' internal agar berwarna Oranye Estetik */
+        /* 3. Desain ulang tombol internal biar lebar penuh & rapi mirip tombol biasa */
         .stFileUploader section button {
-            background-color: #ff823a !important;
+            width: 100% !important;
+            background-color: #ff823a !important; /* Warna Oranye Tema */
             color: white !important;
             border: none !important;
-            border-radius: 8px !important;
-            padding: 10px 24px !important;
+            border-radius: 10px !important;
+            padding: 14px 20px !important;
+            font-size: 16px !important;
             font-weight: bold !important;
-            box-shadow: 0 4px 6px rgba(255, 130, 58, 0.2) !important;
-            margin-top: 10px !important;
+            box-shadow: 0 4px 10px rgba(255, 130, 58, 0.2) !important;
+            transition: background-color 0.2s ease !important;
+            display: block !important;
         }
         
-        /* Efek hover saat tombol disentuh mouse */
+        /* Kembalikan warna teks di dalam tombol agar tetap putih */
+        .stFileUploader section button * {
+            color: white !important;
+            font-size: 16px !important;
+        }
+        
+        /* Efek Hover pas disentuh mouse */
         .stFileUploader section button:hover {
             background-color: #e06f2e !important;
-            color: white !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -75,7 +88,7 @@ def run_prediction(img, model_tf):
         return f"Unknown_{idx}", conf
     return CLASS_NAMES[idx], conf
 
-# --- LOGIKA DIAGNOSTIK DI SIDEBAR (Biar Halaman Utama Bersih) ---
+# --- LOGIKA DIAGNOSTIK DI SIDEBAR ---
 with st.sidebar:
     st.header("🔍 Status Server AI")
     if os.path.exists(MODEL_PATH):
@@ -128,7 +141,7 @@ elif st.session_state['stage'] == 'detection':
 
     st.markdown("<h5 style='text-align: center; color: #888; margin: 25px 0;'>— ATAU PILIH FILE —</h5>", unsafe_allow_html=True)
     
-    # 2. Galeri Otomatis (Sudah dipaksa berubah bentuk lewat CSS Baru)
+    # 2. Galeri Otomatis (Sudah bersih total sisa tombolnya aja)
     gal_file = st.file_uploader("Klik tombol di bawah untuk membuka Galeri / File Manager", type=["jpg", "png", "jpeg"])
 
     final_img = None
@@ -158,7 +171,6 @@ elif st.session_state['stage'] == 'results':
     
     st.title("Hasil Pemindaian ✨")
     
-    # Tampilan Gambar Gede Menghabiskan Layar HP
     st.image(img, use_container_width=True)
     
     if data:
@@ -172,7 +184,7 @@ elif st.session_state['stage'] == 'results':
             col2.metric("Kota Asal", info['asal'])
             
             with st.expander("Informasi Lengkap", expanded=True):
-                st.write(f"**Deskripsi:** {info['sub_deskripsi'] if 'sub_deskripsi' in info else info['deskripsi']}")
+                st.write(f"**Deskripsi:** {info['deskripsi']}")
                 st.write(f"**Bahan Utama:** {info['bahan']}")
         else:
             st.warning(f"Terdeteksi sebagai: {key.title()}")
