@@ -13,13 +13,15 @@ st.set_page_config(page_title="Pendeteksi Jajanan Jatim", page_icon="🍰", layo
 MODEL_PATH = 'model_jajanan.h5'
 TARGET_SIZE = (224, 224)
 
-# --- 1. LOAD MODEL ---
+# --- 1. LOAD MODEL (Ditambahkan compile=False untuk cegah crash versi TF) ---
 @st.cache_resource
 def load_my_model():
     try:
-        return tf.keras.models.load_model(MODEL_PATH)
+        # compile=False terbukti ampuh mengatasi bug versi Keras/TF di server deploy
+        return tf.keras.models.load_model(MODEL_PATH, compile=False)
     except Exception as e:
-        st.error(f"Gagal memuat model: {e}")
+        st.error(f"⚠️ Gagal memuat file model '{MODEL_PATH}' di server.")
+        st.exception(e) # Menampilkan detail error asli tanpa di-redact Streamlit
         return None
 
 loaded_model = load_my_model()
@@ -83,9 +85,13 @@ elif st.session_state['stage'] == 'detection':
         st.session_state['active_img'] = final_img
         st.write("---")
         if st.button("🔥 Analisis Gambar", use_container_width=True, type="primary"):
-            res, cf = run_prediction(final_img, loaded_model)
-            st.session_state['result_data'] = {'name': res, 'conf': cf}
-            go_to('results')
+            # SAFEGUARD: Pastikan model beneran ada sebelum running prediksi
+            if loaded_model is not None:
+                res, cf = run_prediction(final_img, loaded_model)
+                st.session_state['result_data'] = {'name': res, 'conf': cf}
+                go_to('results')
+            else:
+                st.error("❌ Fitur analisis tidak dapat dijalankan karena model .h5 gagal dimuat sempurna. Silakan cek pesan error detail di bagian atas aplikasi.")
             
     if st.button("Kembali ke Home", use_container_width=True):
         go_to('landing')
@@ -99,7 +105,6 @@ elif st.session_state['stage'] == 'results':
     
     st.title("Hasil Pemindaian ✨")
     
-    # Tampilan Gambar Gede (Menuhin layar)
     st.image(img, use_container_width=True)
     
     if data:
@@ -121,7 +126,6 @@ elif st.session_state['stage'] == 'results':
             
     st.write("---")
     
-    # 2 Tombol Navigasi di Bawah
     if st.button("🔄 Scan Ulang Jajanan", use_container_width=True, type="primary"):
         st.session_state['active_img'] = None
         go_to('detection')
