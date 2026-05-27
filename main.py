@@ -5,7 +5,7 @@ from PIL import Image, ImageOps
 import time
 
 # --- IMPORT DATA DARI FILE TERPISAH ---
-from jajanan_data import CLASS_NAMES, JAJANAN_DB
+from data import CLASS_NAMES, JAJANAN_DB
 
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(
