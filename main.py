@@ -8,58 +8,8 @@ import os
 # --- IMPORT DATABASE ---
 from jajanan_data import CLASS_NAMES, JAJANAN_DB
 
-# --- KONFIGURASI Halaman ---
+# --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Pendeteksi Jajanan Jatim", page_icon="🍰", layout="centered")
-
-# --- KUSTOMISASI UI (SULAP JADI TOMBOL SOLID LURUS) ---
-st.markdown("""
-    <style>
-        /* 1. Hapus total border kotak hantu dan background pink bawaan */
-        .stFileUploader section {
-            border: none !important;
-            background-color: transparent !important;
-            padding: 0px !important;
-            margin: 0px !important;
-        }
-        
-        /* 2. Hilangkan semua teks instruksi dan icon bawaan yang bikin berantakan */
-        .stFileUploader section div {
-            font-size: 0px !important;
-            color: transparent !important;
-            padding: 0px !important;
-            margin: 0px !important;
-        }
-        .stFileUploader section svg {
-            display: none !important;
-        }
-        
-        /* 3. Desain ulang tombol internal biar lebar penuh & rapi mirip tombol biasa */
-        .stFileUploader section button {
-            width: 100% !important;
-            background-color: #ff823a !important; /* Warna Oranye Tema */
-            color: white !important;
-            border: none !important;
-            border-radius: 10px !important;
-            padding: 14px 20px !important;
-            font-size: 16px !important;
-            font-weight: bold !important;
-            box-shadow: 0 4px 10px rgba(255, 130, 58, 0.2) !important;
-            transition: background-color 0.2s ease !important;
-            display: block !important;
-        }
-        
-        /* Kembalikan warna teks di dalam tombol agar tetap putih */
-        .stFileUploader section button * {
-            color: white !important;
-            font-size: 16px !important;
-        }
-        
-        /* Efek Hover pas disentuh mouse */
-        .stFileUploader section button:hover {
-            background-color: #e06f2e !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
 
 MODEL_PATH = 'model_jajanan.h5'
 TARGET_SIZE = (224, 224)
@@ -133,7 +83,7 @@ elif st.session_state['stage'] == 'detection':
     st.write("Silakan izinkan kamera atau gunakan galeri di bawah jika kamera bermasalah.")
     st.write("##")
     
-    # 1. Kamera Otomatis
+    # 1. Kamera Otomatis Bawaan Streamlit
     cam_file = st.camera_input("Ambil foto jajanan langsung")
     
     if not cam_file:
@@ -141,12 +91,14 @@ elif st.session_state['stage'] == 'detection':
 
     st.markdown("<h5 style='text-align: center; color: #888; margin: 25px 0;'>— ATAU PILIH FILE —</h5>", unsafe_allow_html=True)
     
-    # 2. Galeri Otomatis (Sudah bersih total sisa tombolnya aja)
-    gal_file = st.file_uploader("Klik tombol di bawah untuk membuka Galeri / File Manager", type=["jpg", "png", "jpeg"])
+    # 2. File Uploader Asli/Original Streamlit
+    gal_file = st.file_uploader("Upload gambar dari galeri / file manager", type=["jpg", "png", "jpeg"])
 
     final_img = None
-    if cam_file: final_img = Image.open(cam_file)
-    elif gal_file: final_img = Image.open(gal_file)
+    if cam_file: 
+        final_img = Image.open(cam_file)
+    elif gal_file: 
+        final_img = Image.open(gal_file)
 
     if final_img:
         st.session_state['active_img'] = final_img
@@ -171,6 +123,7 @@ elif st.session_state['stage'] == 'results':
     
     st.title("Hasil Pemindaian ✨")
     
+    # Tampilan Gambar Gede Menghabiskan Layar HP
     st.image(img, use_container_width=True)
     
     if data:
