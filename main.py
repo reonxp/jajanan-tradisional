@@ -10,18 +10,42 @@ from jajanan_data import CLASS_NAMES, JAJANAN_DB
 # --- KONFIGURASI ---
 st.set_page_config(page_title="Pendeteksi Jajanan Jatim", page_icon="🍰", layout="centered")
 
+# --- KUSTOMISASI UI (CSS HACK) ---
+# Trik buat mempercantik tombol file uploader biar clean kayak tombol biasa
+st.markdown("""
+    <style>
+        /* Mengubah container upload file jadi lebih minimalis */
+        .stFileUploader {
+            padding: 0px;
+        }
+        div[data-testid="stFileUploaderDropzone"] {
+            border: 2px dashed #ff823a;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            padding: 15px;
+        }
+        div[data-testid="stFileUploaderDropzone"] h4 {
+            font-size: 14px;
+            color: #555;
+        }
+        /* Menyembunyikan label bawaan streamlit yang mengganggu */
+        div[data-testid="stFileUploaderDropzoneInstructions"] {
+            font-size: 13px;
+            color: #888;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 MODEL_PATH = 'model_jajanan.h5'
 TARGET_SIZE = (224, 224)
 
-# --- 1. LOAD MODEL (Ditambahkan compile=False untuk cegah crash versi TF) ---
+# --- 1. LOAD MODEL ---
 @st.cache_resource
 def load_my_model():
     try:
-        # compile=False terbukti ampuh mengatasi bug versi Keras/TF di server deploy
         return tf.keras.models.load_model(MODEL_PATH, compile=False)
     except Exception as e:
-        st.error(f"⚠️ Gagal memuat file model '{MODEL_PATH}' di server.")
-        st.exception(e) # Menampilkan detail error asli tanpa di-redact Streamlit
+        st.error(f"Gagal memuat model: {e}")
         return None
 
 loaded_model = load_my_model()
@@ -68,30 +92,38 @@ if st.session_state['stage'] == 'landing':
 # ==========================================
 elif st.session_state['stage'] == 'detection':
     st.title("Pindai Jajanan 📸")
+    st.write("Silakan izinkan kamera atau gunakan galeri di bawah jika kamera bermasalah.")
+    st.write("##")
     
-    # Kamera Otomatis
-    cam_file = st.camera_input("Ambil foto jajanan")
+    # 1. Kamera Otomatis
+    cam_file = st.camera_input("Ambil foto jajanan langsung")
     
-    st.markdown("<h5 style='text-align: center; color: #888; margin: 20px 0;'>— Atau —</h5>", unsafe_allow_html=True)
+    # --- LOGIKA PROTEKSI PERMISSION KAMERA ---
+    # Jika kamera tidak diaktifkan / di-deny, kita kasih info pop-up manis (st.info)
+    if not cam_file:
+        st.info("💡 **Kamera tidak aktif?** Jika akses kamera ditolak atau tidak tersedia, tenang brok! Kamu bisa langsung pakai tombol **Upload dari Galeri** di bawah ini 👇")
+
+    st.markdown("<h5 style='text-align: center; color: #888; margin: 25px 0;'>— ATAU PILIH FILE —</h5>", unsafe_allow_html=True)
     
-    # Galeri Otomatis
-    gal_file = st.file_uploader("Upload dari galeri", type=["jpg", "png", "jpeg"])
+    # 2. Galeri Otomatis (Udah di-styling via CSS di atas biar makin cakep)
+    gal_file = st.file_uploader("📁 Klik di sini untuk membuka File Manager / Galeri", type=["jpg", "png", "jpeg"])
 
     final_img = None
-    if cam_file: final_img = Image.open(cam_file)
-    elif gal_file: final_img = Image.open(gal_file)
+    if cam_file: 
+        final_img = Image.open(cam_file)
+    elif gal_file: 
+        final_img = Image.open(gal_file)
 
     if final_img:
         st.session_state['active_img'] = final_img
         st.write("---")
         if st.button("🔥 Analisis Gambar", use_container_width=True, type="primary"):
-            # SAFEGUARD: Pastikan model beneran ada sebelum running prediksi
             if loaded_model is not None:
                 res, cf = run_prediction(final_img, loaded_model)
                 st.session_state['result_data'] = {'name': res, 'conf': cf}
                 go_to('results')
             else:
-                st.error("❌ Fitur analisis tidak dapat dijalankan karena model .h5 gagal dimuat sempurna. Silakan cek pesan error detail di bagian atas aplikasi.")
+                st.error("❌ Model gagal dimuat. Tidak bisa menganalisis.")
             
     if st.button("Kembali ke Home", use_container_width=True):
         go_to('landing')
@@ -105,6 +137,7 @@ elif st.session_state['stage'] == 'results':
     
     st.title("Hasil Pemindaian ✨")
     
+    # Tampilan Gambar Gede (Menuhin layar HP)
     st.image(img, use_container_width=True)
     
     if data:
@@ -126,6 +159,7 @@ elif st.session_state['stage'] == 'results':
             
     st.write("---")
     
+    # 2 Tombol Navigasi Mandiri di Bawah
     if st.button("🔄 Scan Ulang Jajanan", use_container_width=True, type="primary"):
         st.session_state['active_img'] = None
         go_to('detection')
