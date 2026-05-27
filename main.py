@@ -10,28 +10,45 @@ from jajanan_data import CLASS_NAMES, JAJANAN_DB
 # --- KONFIGURASI ---
 st.set_page_config(page_title="Pendeteksi Jajanan Jatim", page_icon="🍰", layout="centered")
 
-# --- KUSTOMISASI UI (CSS HACK) ---
-# Trik buat mempercantik tombol file uploader biar clean kayak tombol biasa
+# --- KUSTOMISASI UI (CSS HACK DENGAN !IMPORTANT) ---
 st.markdown("""
     <style>
-        /* Mengubah container upload file jadi lebih minimalis */
-        .stFileUploader {
-            padding: 0px;
-        }
+        /* 1. Paksa ubah kotak dropzone uploader */
         div[data-testid="stFileUploaderDropzone"] {
-            border: 2px dashed #ff823a;
-            border-radius: 10px;
-            background-color: #f9f9f9;
-            padding: 15px;
+            border: 2px dashed #ff823a !important;
+            border-radius: 12px !important;
+            background-color: #fffaf7 !important;
+            padding: 20px !important;
+            transition: all 0.3s ease;
         }
+        
+        /* 2. Ubah warna & ukuran teks instruksi utama */
         div[data-testid="stFileUploaderDropzone"] h4 {
-            font-size: 14px;
-            color: #555;
+            font-size: 15px !important;
+            color: #222222 !important;
+            font-weight: bold !important;
         }
-        /* Menyembunyikan label bawaan streamlit yang mengganggu */
+        
+        /* 3. SULAP tombol 'Browse files' internal agar mirip tombol biasa yang cakep */
+        div[data-testid="stFileUploaderDropzone"] button {
+            background-color: #ff823a !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 8px 20px !important;
+            font-weight: bold !important;
+            box-shadow: 0 4px 6px rgba(255, 130, 58, 0.2) !important;
+            transition: background-color 0.2s ease !important;
+        }
+        
+        /* Efek hover pas tombol didekati mouse */
+        div[data-testid="stFileUploaderDropzone"] button:hover {
+            background-color: #e06f2e !important;
+        }
+
+        /* 4. Sembunyikan teks instruksi kecil bawaan streamlit yang bikin penuh */
         div[data-testid="stFileUploaderDropzoneInstructions"] {
-            font-size: 13px;
-            color: #888;
+            display: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -98,14 +115,13 @@ elif st.session_state['stage'] == 'detection':
     # 1. Kamera Otomatis
     cam_file = st.camera_input("Ambil foto jajanan langsung")
     
-    # --- LOGIKA PROTEKSI PERMISSION KAMERA ---
-    # Jika kamera tidak diaktifkan / di-deny, kita kasih info pop-up manis (st.info)
+    # Logika proteksi kamera
     if not cam_file:
         st.info("💡 **Kamera tidak aktif?** Jika akses kamera ditolak atau tidak tersedia, tenang brok! Kamu bisa langsung pakai tombol **Upload dari Galeri** di bawah ini 👇")
 
     st.markdown("<h5 style='text-align: center; color: #888; margin: 25px 0;'>— ATAU PILIH FILE —</h5>", unsafe_allow_html=True)
     
-    # 2. Galeri Otomatis (Udah di-styling via CSS di atas biar makin cakep)
+    # 2. Galeri Otomatis (Sudah dipaksa berubah via !important)
     gal_file = st.file_uploader("📁 Klik di sini untuk membuka File Manager / Galeri", type=["jpg", "png", "jpeg"])
 
     final_img = None
@@ -137,7 +153,6 @@ elif st.session_state['stage'] == 'results':
     
     st.title("Hasil Pemindaian ✨")
     
-    # Tampilan Gambar Gede (Menuhin layar HP)
     st.image(img, use_container_width=True)
     
     if data:
@@ -159,7 +174,6 @@ elif st.session_state['stage'] == 'results':
             
     st.write("---")
     
-    # 2 Tombol Navigasi Mandiri di Bawah
     if st.button("🔄 Scan Ulang Jajanan", use_container_width=True, type="primary"):
         st.session_state['active_img'] = None
         go_to('detection')
