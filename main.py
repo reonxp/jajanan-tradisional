@@ -4,155 +4,127 @@ import numpy as np
 from PIL import Image, ImageOps
 import time
 
-# --- IMPORT DATA DARI FILE TERPISAH ---
-from data import CLASS_NAMES, JAJANAN_DB
+# --- IMPORT DATABASE ---
+from jajanan_data import CLASS_NAMES, JAJANAN_DB
 
-# --- KONFIGURASI HALAMAN ---
-st.set_page_config(
-    page_title="Pendeteksi Jajanan Tradisional",
-    page_icon="🍰",
-    layout="centered"
-)
+# --- KONFIGURASI ---
+st.set_page_config(page_title="Pendeteksi Jajanan Jatim", page_icon="🍰", layout="centered")
 
 MODEL_PATH = 'model_jajanan.h5'
-TARGET_SIZE = (224, 224) 
+TARGET_SIZE = (224, 224)
 
-# --- 1. LOAD MODEL (Cached) ---
+# --- 1. LOAD MODEL ---
 @st.cache_resource
 def load_my_model():
     try:
-        model = tf.keras.models.load_model(MODEL_PATH)
-        return model
+        return tf.keras.models.load_model(MODEL_PATH)
     except Exception as e:
-        st.error(f"⚠️ Gagal memuat model '{MODEL_PATH}'. Error: {e}")
+        st.error(f"Gagal memuat model: {e}")
         return None
 
 loaded_model = load_my_model()
 
-# --- 2. FUNGSI PROSES PREDIKSI ---
-def predict_image(img, model_tf):
+# --- 2. LOGIKA PREDIKSI ---
+def run_prediction(img, model_tf):
     image_resized = ImageOps.fit(img, TARGET_SIZE, Image.Resampling.LANCZOS)
-    img_array = np.asarray(image_resized)
-    img_array = img_array.astype('float32')
-    
-    # Normalisasi (matikan jika model lu sudah include layer Rescaling internal)
-    img_array = img_array / 255.0
+    img_array = np.asarray(image_resized).astype('float32') / 255.0
     img_expand = np.expand_dims(img_array, axis=0)
-
-    with st.spinner('Sedang memindai gambar... 🧐'):
-        time.sleep(1)
-        predictions = model_tf.predict(img_expand)
-        
-    predicted_class_idx = np.argmax(predictions[0])
-    confidence = np.max(predictions[0]) * 100
     
-    # SAFEGUARD PROTEKSI INDEX ERROR
-    if predicted_class_idx >= len(CLASS_NAMES):
-        return f"Unknown_Index_{predicted_class_idx}", confidence
+    predictions = model_tf.predict(img_expand)
+    idx = np.argmax(predictions[0])
+    conf = np.max(predictions[0]) * 100
     
-    return CLASS_NAMES[predicted_class_idx], confidence
+    if idx >= len(CLASS_NAMES):
+        return f"Unknown_{idx}", conf
+    return CLASS_NAMES[idx], conf
 
-# --- LOGIKA NAVIGASI (SESSION STATE) ---
-if 'app_stage' not in st.session_state:
-    st.session_state['app_stage'] = 'landing'
+# --- NAVIGASI ---
+if 'stage' not in st.session_state:
+    st.session_state['stage'] = 'landing'
+if 'result_data' not in st.session_state:
+    st.session_state['result_data'] = None
+if 'active_img' not in st.session_state:
+    st.session_state['active_img'] = None
 
-def change_stage(stage_name):
-    st.session_state['app_stage'] = stage_name
+def go_to(stage_name):
+    st.session_state['stage'] = stage_name
     st.rerun()
 
 # ==========================================
-# --- STAGE 1: HALAMAN LANDING ---
+# --- STAGE 1: LANDING PAGE ---
 # ==========================================
-if st.session_state['app_stage'] == 'landing':
+if st.session_state['stage'] == 'landing':
     st.write("##")
-    st.write("##")
-    left, mid, right = st.columns([1, 4, 1])
-    
-    with mid:
-        st.markdown(
-            """
-            <div style="text-align: center; font-size: 65px; line-height: 0.8; margin-bottom: -10px;">
-                🍰<br>➖<br>➖
-            </div>
-            """, unsafe_allow_html=True
-        )
-        st.write("---")
-        st.markdown(
-            """
-            <div style="text-align: center;">
-                <h1 style="font-size: 26px;">Selamat Datang! 👋</h1>
-                <p style="font-size: 15px; color: #666;">
-                    Aplikasi cerdas pendeteksi varian jajanan tradisional khas Nusantara berbasis Deep Learning.
-                </p>
-            </div>
-            """, unsafe_allow_html=True
-        )
-        st.write("##")
-        if st.button("Mulai deteksi", use_container_width=True):
-            change_stage('detection')
-
-# ==========================================
-# --- STAGE 2: HALAMAN DETEKSI ---
-# ==========================================
-elif st.session_state['app_stage'] == 'detection':
-    if st.button("⬅️ Kembali ke Home"):
-        change_stage('landing')
-        
+    st.markdown("<h1 style='text-align: center;'>🍰<br>Sistem Deteksi Jajanan</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #666;'>Kenali kekayaan kuliner Jawa Timur dengan teknologi AI.</p>", unsafe_allow_html=True)
     st.write("---")
-    st.title("Pindai Jajanan Tradisional 📸")
-    st.write("Silakan ambil foto langsung atau upload file dari galeri.")
-    st.write("##")
+    if st.button("Mulai Deteksi Sekarang", use_container_width=True, type="primary"):
+        go_to('detection')
 
-    # 1. INPUT KAMERA LANGSUNG (Otomatis trigger prompt allow/deny di browser)
-    camera_file = st.camera_input("Arahkan jajanan ke kamera")
+# ==========================================
+# --- STAGE 2: DETECTION PAGE ---
+# ==========================================
+elif st.session_state['stage'] == 'detection':
+    st.title("Pindai Jajanan 📸")
     
-    # Pembatas visual biar rapi
-    st.markdown("<h4 style='text-align: center; color: #aaa; margin: 25px 0;'>— ATAU —</h4>", unsafe_allow_html=True)
+    # Kamera Otomatis
+    cam_file = st.camera_input("Ambil foto jajanan")
     
-    # 2. INPUT FILE UPLOADER (Langsung stand-by buka file manager saat diklik)
-    uploaded_file = st.file_uploader("📁 Upload gambar dari file manager / galeri...", type=["jpg", "jpeg", "png"])
+    st.markdown("<h5 style='text-align: center; color: #888; margin: 20px 0;'>— Atau —</h5>", unsafe_allow_html=True)
+    
+    # Galeri Otomatis
+    gal_file = st.file_uploader("Upload dari galeri", type=["jpg", "png", "jpeg"])
 
-    # Menentukan sumber gambar yang aktif (Kamera diprioritaskan jika keduanya terisi)
-    image_data = None
-    if camera_file is not None:
-        image_data = Image.open(camera_file)
-    elif uploaded_file is not None:
-        image_data = Image.open(uploaded_file)
+    final_img = None
+    if cam_file: final_img = Image.open(cam_file)
+    elif gal_file: final_img = Image.open(gal_file)
 
-    # Jika salah satu input dapet gambar, tombol analisis bakal muncul
-    if image_data is not None:
+    if final_img:
+        st.session_state['active_img'] = final_img
         st.write("---")
-        # Jika input dari file uploader, kita tampilin preview gambarnya di bawah
-        if uploaded_file is not None and camera_file is None:
-            st.image(image_data, caption='Gambar ter-upload', use_container_width=True)
-        
-        st.write("##")
         if st.button("🔥 Analisis Gambar", use_container_width=True, type="primary"):
-            if loaded_model is not None:
-                hasil, persen = predict_image(image_data, loaded_model)
+            res, cf = run_prediction(final_img, loaded_model)
+            st.session_state['result_data'] = {'name': res, 'conf': cf}
+            go_to('results')
+            
+    if st.button("Kembali ke Home", use_container_width=True):
+        go_to('landing')
 
-                if "Unknown_Index_" in hasil:
-                    st.error(f"⚠️ **Error Kecocokan Model!** Model memprediksi indeks kelas **{hasil.split('_')[-1]}**, tetapi daftar CLASS_NAMES di file 'jajanan_data.py' cuma punya {len(CLASS_NAMES)} pilihan. Silakan periksa kembali urutan folder dataset di Colab lu.")
-                else:
-                    st.write("##")
-                    st.subheader("🎉 Hasil Klasifikasi")
-                    
-                    if hasil in JAJANAN_DB:
-                        info = JAJANAN_DB[hasil]
-                        
-                        # Menampilkan Output Informasi Sesuai Request Lu
-                        st.metric(label="Nama Jajanan Tradisional", value=info['nama_display'])
-                        st.metric(label="Tingkat Keyakinan (Confidence Score)", value=f"{persen:.2f}%")
-                        
-                        st.info(f"📍 **Kota Asal (Khas Jatim):** {info['asal']}")
-                        st.markdown(f"""
-                        **📄 Deskripsi:** {info['deskripsi']}
-                        
-                        **🌾 Bahan-Bahan Utama:** {info['bahan']}
-                        """)
-                    else:
-                        st.metric(label="Nama Jajanan Tradisional", value=hasil.title())
-                        st.metric(label="Tingkat Keyakinan (Confidence Score)", value=f"{persen:.2f}%")
-                        st.warning("Informasi tambahan untuk jajanan ini belum dimasukkan ke database sistem.")
-            else:
-                st.error("Model tidak siap digunakan.")
+# ==========================================
+# --- STAGE 3: RESULTS PAGE ---
+# ==========================================
+elif st.session_state['stage'] == 'results':
+    data = st.session_state['result_data']
+    img = st.session_state['active_img']
+    
+    st.title("Hasil Pemindaian ✨")
+    
+    # Tampilan Gambar Gede (Menuhin layar)
+    st.image(img, use_container_width=True)
+    
+    if data:
+        key = data['name']
+        if key in JAJANAN_DB:
+            info = JAJANAN_DB[key]
+            st.success(f"### {info['nama_display']}")
+            
+            col1, col2 = st.columns(2)
+            col1.metric("Confidence", f"{data['conf']:.1f}%")
+            col2.metric("Kota Asal", info['asal'])
+            
+            with st.expander("Informasi Lengkap", expanded=True):
+                st.write(f"**Deskripsi:** {info['deskripsi']}")
+                st.write(f"**Bahan Utama:** {info['bahan']}")
+        else:
+            st.warning(f"Terdeteksi sebagai: {key.title()}")
+            st.metric("Confidence Score", f"{data['conf']:.1f}%")
+            
+    st.write("---")
+    
+    # 2 Tombol Navigasi di Bawah
+    if st.button("🔄 Scan Ulang Jajanan", use_container_width=True, type="primary"):
+        st.session_state['active_img'] = None
+        go_to('detection')
+        
+    if st.button("🏠 Kembali ke Home", use_container_width=True):
+        go_to('landing')
