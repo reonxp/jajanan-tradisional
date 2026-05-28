@@ -128,26 +128,40 @@ elif st.session_state['stage'] == 'results':
     
     if data:
         key = data['name']
-        if key in JAJANAN_DB:
-            info = JAJANAN_DB[key]
-            st.success(f"### {info['nama_display']}")
-            
-            col1, col2 = st.columns(2)
-            col1.metric("Confidence", f"{data['conf']:.1f}%")
-            col2.metric("Kota Asal", info['asal'])
-            
-            with st.expander("Informasi Lengkap", expanded=True):
-                st.write(f"**Deskripsi:** {info['deskripsi']}")
-                st.write(f"**Bahan Utama:** {info['bahan']}")
+        persen = data['conf']
+        
+        # --- LOGIKA THRESHOLD CONFIDENCE < 50% ---
+        if persen < 50.0:
+            st.error("### ⚠️ Jajan tidak ditemukan")
+            st.warning("Harap tunggu sampai update selanjutnya.")
+            st.info("💡 **Tips:** Coba ambil foto ulang dengan posisi lebih dekat, objek fokus di tengah, dan pastikan pencahayaan terang.")
+            # Tetap menampilkan nilai confidence
+            st.metric("Confidence Score (Terlahu Rendah)", f"{persen:.1f}%")
         else:
-            st.warning(f"Terdeteksi sebagai: {key.title()}")
-            st.metric("Confidence Score", f"{data['conf']:.1f}%")
+            # Jika di atas atau sama dengan 50%, info jajanan baru dimunculkan
+            if key in JAJANAN_DB:
+                info = JAJANAN_DB[key]
+                st.success(f"### {info['nama_display']}")
+                
+                col1, col2 = st.columns(2)
+                col1.metric("Confidence", f"{persen:.1f}%")
+                col2.metric("Kota Asal", info['asal'])
+                
+                with st.expander("Informasi Lengkap", expanded=True):
+                    st.write(f"**Deskripsi:** {info['deskripsi']}")
+                    st.write(f"**Bahan Utama:** {info['bahan']}")
+            else:
+                st.warning(f"Terdeteksi sebagai: {key.title()}")
+                st.metric("Confidence Score", f"{persen:.1f}%")
             
     st.write("---")
     
     if st.button("🔄 Scan Ulang Jajanan", use_container_width=True, type="primary"):
         st.session_state['active_img'] = None
+        st.session_state['result_data'] = None
         go_to('detection')
         
     if st.button("🏠 Kembali ke Home", use_container_width=True):
+        st.session_state['active_img'] = None
+        st.session_state['result_data'] = None
         go_to('landing')
