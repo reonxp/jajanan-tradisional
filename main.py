@@ -24,12 +24,21 @@ def load_my_model():
 
 loaded_model = load_my_model()
 
-# --- 2. LOGIKA PREDIKSI ---
+# --- 2. LOGIKA PREDIKSI (SUDAH DIPERBAIKI SINKRON DENGAN COLAB) ---
 def run_prediction(img, model_tf):
-    image_resized = ImageOps.fit(img, TARGET_SIZE, Image.Resampling.LANCZOS)
+    # 1. Pastikan gambar dikonversi ke RGB (antisipasi format PNG/RGBA)
+    img_rgb = img.convert('RGB')
+    
+    # 2. Gunakan .resize langsung dengan BILINEAR agar sama dengan Keras load_img (squish format)
+    image_resized = img_rgb.resize(TARGET_SIZE, Image.Resampling.BILINEAR)
+    
+    # 3. Konversi ke array dan normalisasi skala 1/255
     img_array = np.asarray(image_resized).astype('float32') / 255.0
+    
+    # 4. Tambah dimensi batch (1, 224, 224, 3)
     img_expand = np.expand_dims(img_array, axis=0)
     
+    # 5. Eksekusi prediksi
     predictions = model_tf.predict(img_expand)
     idx = np.argmax(predictions[0])
     conf = np.max(predictions[0]) * 100
@@ -98,6 +107,7 @@ elif st.session_state['stage'] == 'detection':
     if cam_file: 
         final_img = Image.open(cam_file)
     elif gal_file: 
+        gal_file.seek(0) # Reset pointer file buffer
         final_img = Image.open(gal_file)
 
     if final_img:
@@ -135,8 +145,7 @@ elif st.session_state['stage'] == 'results':
             st.error("### ⚠️ Jajan tidak ditemukan")
             st.warning("Harap tunggu sampai update selanjutnya.")
             st.info("💡 **Tips:** Coba ambil foto ulang dengan posisi lebih dekat, objek fokus di tengah, dan pastikan pencahayaan terang.")
-            # Tetap menampilkan nilai confidence
-            st.metric("Confidence Score (Terlahu Rendah)", f"{persen:.1f}%")
+            st.metric("Confidence Score (Terlalu Rendah)", f"{persen:.1f}%")
         else:
             # Jika di atas atau sama dengan 50%, info jajanan baru dimunculkan
             if key in JAJANAN_DB:
