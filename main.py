@@ -30,7 +30,7 @@ def run_prediction(img, model_tf):
     img_rgb = img.convert('RGB')
     
     # 2. Gunakan .resize langsung dengan BILINEAR agar sama dengan Keras load_img (squish format)
-    image_resized = img_rgb.resize(TARGET_SIZE, Image.Resampling.BILINEAR)
+    image_resized = img_rgb.resize(TARGET_SIZE, Image.Resampling.NEAREST)
     
     # 3. Konversi ke array dan normalisasi skala 1/255
     img_array = np.asarray(image_resized).astype('float32') / 255.0
