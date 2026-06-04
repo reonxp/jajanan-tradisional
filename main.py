@@ -24,21 +24,18 @@ def load_my_model():
 
 loaded_model = load_my_model()
 
-# --- 2. LOGIKA PREDIKSI (SUDAH DIPERBAIKI SINKRON DENGAN COLAB) ---
+# --- 2. LOGIKA PREDIKSI ---
 def run_prediction(img, model_tf):
-    # 1. Pastikan gambar dikonversi ke RGB (antisipasi format PNG/RGBA)
     img_rgb = img.convert('RGB')
     
-    # 2. Gunakan .resize langsung dengan BILINEAR agar sama dengan Keras load_img (squish format)
-    image_resized = img_rgb.resize(TARGET_SIZE, Image.Resampling.NEAREST)
+    # Menggunakan BILINEAR agar kualitas tekstur halus jajan tetap terjaga (Sesuai Keras)
+    image_resized = img_rgb.resize(TARGET_SIZE, Image.Resampling.BILINEAR)
     
-    # 3. Konversi ke array dan normalisasi skala 1/255
+    # Tetap dibagi 255.0 sesuai dengan setelan 'rescale=1./255' di notebook Colab lu
     img_array = np.asarray(image_resized).astype('float32') / 255.0
-    
-    # 4. Tambah dimensi batch (1, 224, 224, 3)
     img_expand = np.expand_dims(img_array, axis=0)
     
-    # 5. Eksekusi prediksi
+    # Eksekusi prediksi
     predictions = model_tf.predict(img_expand)
     idx = np.argmax(predictions[0])
     conf = np.max(predictions[0]) * 100
@@ -92,7 +89,6 @@ elif st.session_state['stage'] == 'detection':
     st.write("Silakan izinkan kamera atau gunakan galeri di bawah jika kamera bermasalah.")
     st.write("##")
     
-    # 1. Kamera Otomatis Bawaan Streamlit
     cam_file = st.camera_input("Ambil foto jajanan langsung")
     
     if not cam_file:
@@ -100,14 +96,13 @@ elif st.session_state['stage'] == 'detection':
 
     st.markdown("<h5 style='text-align: center; color: #888; margin: 25px 0;'>— ATAU PILIH FILE —</h5>", unsafe_allow_html=True)
     
-    # 2. File Uploader Asli/Original Streamlit
     gal_file = st.file_uploader("Upload gambar dari galeri / file manager", type=["jpg", "png", "jpeg"])
 
     final_img = None
     if cam_file: 
         final_img = Image.open(cam_file)
     elif gal_file: 
-        gal_file.seek(0) # Reset pointer file buffer
+        gal_file.seek(0) 
         final_img = Image.open(gal_file)
 
     if final_img:
@@ -132,22 +127,19 @@ elif st.session_state['stage'] == 'results':
     img = st.session_state['active_img']
     
     st.title("Hasil Pemindaian ✨")
-    
-    # Tampilan Gambar Gede Menghabiskan Layar HP
     st.image(img, use_container_width=True)
     
     if data:
         key = data['name']
         persen = data['conf']
         
-        # --- LOGIKA THRESHOLD CONFIDENCE < 50% ---
-        if persen < 50.0:
+        # --- LOGIKA THRESHOLD CONFIDENCE DIKETATKAN KE < 70% ---
+        if persen < 70.0:
             st.error("### ⚠️ Jajan tidak ditemukan")
             st.warning("Harap tunggu sampai update selanjutnya.")
-            st.info("💡 **Tips:** Coba ambil foto ulang dengan posisi lebih dekat, objek fokus di tengah, dan pastikan pencahayaan terang.")
+            st.info("💡 **Analisis Sistem:** Gambar yang dimasukkan kemungkinan besar tidak terdaftar dalam 20 varian objek training utama.")
             st.metric("Confidence Score (Terlalu Rendah)", f"{persen:.1f}%")
         else:
-            # Jika di atas atau sama dengan 50%, info jajanan baru dimunculkan
             if key in JAJANAN_DB:
                 info = JAJANAN_DB[key]
                 st.success(f"### {info['nama_display']}")
