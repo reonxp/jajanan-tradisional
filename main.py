@@ -27,15 +27,9 @@ loaded_model = load_my_model()
 # --- 2. LOGIKA PREDIKSI ---
 def run_prediction(img, model_tf):
     img_rgb = img.convert('RGB')
-    
-    # Menggunakan BILINEAR agar kualitas tekstur halus jajan tetap terjaga (Sesuai Keras)
-    image_resized = img_rgb.resize(TARGET_SIZE, Image.Resampling.BILINEAR)
-    
-    # Tetap dibagi 255.0 sesuai dengan setelan 'rescale=1./255' di notebook Colab lu
+    image_resized = img_rgb.resize(TARGET_SIZE, Image.Resampling.NEAREST)
     img_array = np.asarray(image_resized).astype('float32') / 255.0
     img_expand = np.expand_dims(img_array, axis=0)
-    
-    # Eksekusi prediksi
     predictions = model_tf.predict(img_expand)
     idx = np.argmax(predictions[0])
     conf = np.max(predictions[0]) * 100
