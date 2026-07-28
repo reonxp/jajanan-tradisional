@@ -108,7 +108,7 @@ elif st.session_state['stage'] == 'detection':
                 st.session_state['result_data'] = {'name': res, 'conf': cf}
                 go_to('results')
             else:
-                st.error("❌ Model gagal dimuat sempurna. Periksa status di sidebar.")
+                st.error("Model gagal dimuat sempurna. Periksa status di sidebar.")
             
     if st.button("Kembali ke Home", use_container_width=True):
         go_to('landing')
@@ -151,12 +151,12 @@ elif st.session_state['stage'] == 'results':
             
     st.write("---")
     
-    if st.button("🔄 Scan Ulang Jajanan", use_container_width=True, type="primary"):
+    if st.button("Scan Ulang Jajanan", use_container_width=True, type="primary"):
         st.session_state['active_img'] = None
         st.session_state['result_data'] = None
         go_to('detection')
         
-    if st.button("🏠 Kembali ke Home", use_container_width=True):
+    if st.button("Kembali ke Home", use_container_width=True):
         st.session_state['active_img'] = None
         st.session_state['result_data'] = None
         go_to('landing')
