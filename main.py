@@ -79,14 +79,14 @@ if st.session_state['stage'] == 'landing':
 # --- STAGE 2: DETECTION PAGE ---
 # ==========================================
 elif st.session_state['stage'] == 'detection':
-    st.title("Pindai Jajanan 📸")
+    st.title("Pindai Jajanan")
     st.write("Silakan izinkan kamera atau gunakan galeri di bawah jika kamera bermasalah.")
     st.write("##")
     
     cam_file = st.camera_input("Ambil foto jajanan langsung")
     
     if not cam_file:
-        st.info("💡 **Kamera tidak aktif?** Jika akses kamera ditolak atau tidak tersedia, kamu bisa langsung pakai tombol **Upload dari Galeri** di bawah ini 👇")
+        st.info("**Kamera tidak aktif?** Jika akses kamera ditolak atau tidak tersedia, kamu bisa langsung pakai tombol **Upload dari Galeri** di bawah ini 👇")
 
     st.markdown("<h5 style='text-align: center; color: #888; margin: 25px 0;'>— ATAU PILIH FILE —</h5>", unsafe_allow_html=True)
     
@@ -102,7 +102,7 @@ elif st.session_state['stage'] == 'detection':
     if final_img:
         st.session_state['active_img'] = final_img
         st.write("---")
-        if st.button("🔥 Analisis Gambar", use_container_width=True, type="primary"):
+        if st.button("Analisis Gambar", use_container_width=True, type="primary"):
             if loaded_model is not None:
                 res, cf = run_prediction(final_img, loaded_model)
                 st.session_state['result_data'] = {'name': res, 'conf': cf}
@@ -120,18 +120,18 @@ elif st.session_state['stage'] == 'results':
     data = st.session_state['result_data']
     img = st.session_state['active_img']
     
-    st.title("Hasil Pemindaian ✨")
+    st.title("Hasil Pemindaian")
     st.image(img, use_container_width=True)
     
     if data:
         key = data['name']
         persen = data['conf']
         
-        # --- LOGIKA THRESHOLD CONFIDENCE DIKETATKAN KE < 70% ---
-        if persen < 70.0:
-            st.error("### ⚠️ Jajan tidak ditemukan")
+        # --- LOGIKA THRESHOLD CONFIDENCE DIKETATKAN KE < 60% ---
+        if persen < 60.0:
+            st.error("### Jajan tidak ditemukan")
             st.warning("Harap tunggu sampai update selanjutnya.")
-            st.info("💡 **Analisis Sistem:** Gambar yang dimasukkan kemungkinan besar tidak terdaftar dalam 20 varian objek training utama.")
+            st.info("**Analisis Sistem:** Gambar yang dimasukkan kemungkinan besar tidak terdaftar dalam 20 varian objek training utama.")
             st.metric("Confidence Score (Terlalu Rendah)", f"{persen:.1f}%")
         else:
             if key in JAJANAN_DB:
